@@ -1,0 +1,496 @@
+
+
+
+ARM Macro Assembler    Page 1 
+
+
+    1 00000000                 AREA             AsmTemplate, CODE, READONLY
+    2 00000000                 IMPORT           main
+    3 00000000         
+    4 00000000         ; sample program makes the 4 LEDs P1.16, P1.17, P1.18, P
+                       1.19 go on and off in sequence
+    5 00000000         ; (c) Mike Brady, 2011 -- 2019.
+    6 00000000         
+    7 00000000                 EXPORT           start
+    8 00000000         start
+    9 00000000         
+   10 00000000 E0028018 
+                       IO1DIR  EQU              0xE0028018
+   11 00000000 E0028014 
+                       IO1SET  EQU              0xE0028014
+   12 00000000 E002801C 
+                       IO1CLR  EQU              0xE002801C
+   13 00000000 B669FD2E 
+                       NUMBER  EQU              0XB669FD2E
+   14 00000000         
+   15 00000000 E59F01AC 
+                       loop    LDR              R0,=IO1DIR
+   16 00000004 E3A0280F        LDR              R2,=0x000f0000 ;select P1.19--P
+                                                            1.16
+   17 00000008 E5802000        STR              R2,[R0]     ;make them outputs
+   18 0000000C E59F11A4        LDR              R1,=IO1SET
+   19 00000010 E5812000        STR              R2,[R1]     ;set them to turn t
+                                                            he LEDs off    
+   20 00000014 E59F61A0        LDR              R6,=IO1CLR
+   21 00000018 E3A03801        LDR              R3,=0x00010000 ;Starting LED
+   22 0000001C EB000046        BL               wait
+   23 00000020 E59F0198        LDR              R0, =NUMBER ;Number to convert 
+                                                            and Display
+   24 00000024 E3500000        CMP              R0, #0
+   25 00000028 0A000058        BEQ              specialCaseZero
+   26 0000002C E3A05001        LDR              R5, =1      ;Boolean leadingZer
+                                                            os? (If we encounte
+                                                            r a zero is it a re
+                                                            al digit or a leadi
+                                                            ng zero)
+   27 00000030 E3500000        CMP              R0, #0      ;Check if our Numbe
+                                                            r is negative    
+   28 00000034 AA000004        BGE              notNegative ;Is Negative
+   29 00000038 E3A0200D        MOV              R2, #13     ;
+   30 0000003C EB00002D        BL               putBits
+   31 00000040 EB00003D        BL               wait
+   32 00000044 E3A03801        LDR              R3, =0x00010000
+   33 00000048 EB00004B        BL               twos
+   34 0000004C         
+   35 0000004C E59F2170 
+                       notNegative
+                               LDR              R2, =1000000000 ;R2 = 1 Billion
+                                                            
+   36 00000050 EB000012        BL               calculateNumbers
+   37 00000054 E59F216C        LDR              R2, =100000000 
+                                                            ;R2 = 100 Million
+   38 00000058 EB000010        BL               calculateNumbers
+   39 0000005C E59F2168        LDR              R2, =10000000 ;R2 = 10 Million
+   40 00000060 EB00000E        BL               calculateNumbers
+   41 00000064 E59F2164        LDR              R2, =1000000 ;R2 = 1 Million
+
+
+
+ARM Macro Assembler    Page 2 
+
+
+   42 00000068 EB00000C        BL               calculateNumbers
+   43 0000006C E59F2160        LDR              R2, =100000 ;R2 = 100 Thousand
+   44 00000070 EB00000A        BL               calculateNumbers
+   45 00000074 E59F215C        LDR              R2, =10000  ;R2 = 10 Thousand
+   46 00000078 EB000008        BL               calculateNumbers
+   47 0000007C E3A02FFA        LDR              R2, =1000   ;R2 = 1 Thousand
+   48 00000080 EB000006        BL               calculateNumbers
+   49 00000084 E3A02064        LDR              R2, =100    ;R2 = 1 Hundred
+   50 00000088 EB000004        BL               calculateNumbers
+   51 0000008C E3A0200A        LDR              R2, =10     ;R2 = Ten
+   52 00000090 EB000002        BL               calculateNumbers
+   53 00000094 E3A02001        LDR              R2, =1      ;R2 = One
+   54 00000098 EB000000        BL               calculateNumbers
+   55 0000009C EAFFFFD7        B                loop
+   56 000000A0         
+   57 000000A0         calculateNumbers
+   58 000000A0 E92D4010        PUSH             {R4, LR}
+   59 000000A4 E1A04002        MOV              R4, R2      ;'Divisor'
+   60 000000A8 E3A02000        LDR              R2, =0      ; Counter
+   61 000000AC E0400004 
+                       CalcLoop
+                               SUB              R0, R0, R4  ; Minus 'Divisor'
+   62 000000B0 E3500000        CMP              R0, #0      ; Have we gone unde
+                                                            r 0?
+   63 000000B4 BA000001        BLT              negative    ; Branch if we have
+                                                             gone negative
+   64 000000B8 E2822001        ADD              R2, R2, #1  ; Counter++
+   65 000000BC EAFFFFFA        B                CalcLoop
+   66 000000C0 E0800004 
+                       negative
+                               ADD              R0, R0, R4  ; Add back R1 as we
+                                                             have underflowed
+   67 000000C4 E3520000        CMP              R2, #0      ;
+   68 000000C8 0A000005        BEQ              checkZero   ;
+   69 000000CC E3A05000        LDR              R5, =0      ;We have encountere
+                                                            d our first non-zer
+                                                            o so all other zero
+                                                            s will be valid
+   70 000000D0 EB00001E        BL               swapBits
+   71 000000D4 EB000007 
+                       validZero
+                               BL               putBits
+   72 000000D8 EB000017        BL               wait        ;wait a second 
+   73 000000DC E3A03801        LDR              R3, =0x00010000
+   74 000000E0 E8BD8010 
+                       leadingZero
+                               POP              {R4, PC}
+   75 000000E4         
+   76 000000E4         checkZero
+   77 000000E4 E3550001        CMP              R5, #1      ;
+   78 000000E8 1A000000        BNE              setZero     ;
+   79 000000EC EAFFFFFB        B                leadingZero ;
+   80 000000F0         setZero
+   81 000000F0 E3A0200F        MOV              R2, #15     ;
+   82 000000F4 EAFFFFF6        B                validZero
+   83 000000F8         
+   84 000000F8         putBits
+   85 000000F8 E92D4030        PUSH{R4-R5,      LR}
+   86 000000FC E3A04000        LDR              R4, =0      ;reset counter
+
+
+
+ARM Macro Assembler    Page 3 
+
+
+   87 00000100 E3540004 
+                       bitLoop CMP              R4, #4      ;4 bits
+   88 00000104 0A00000B        BEQ              done
+   89 00000108 E3A05000        LDR              R5, =0      ;Bit Checker   
+   90 0000010C E1B020A2        MOVS             R2, R2, LSR#1 ;Shift out the fi
+                                                            rst bit of R4
+   91 00000110 E2A55000        ADC              R5, R5, #0  ;Check the bit
+   92 00000114 E2844001        ADD              R4, R4, #1  ;Counter++
+   93 00000118 E3550001        CMP              R5, #1      ;
+   94 0000011C 0A000002        BEQ              turnOn      ; Branch if the shi
+                                                            fted bit is a 1
+   95 00000120 E5813000        STR              R3, [R1]
+   96 00000124 E1A03083        MOV              R3, R3, LSL#1 ;Next LED
+   97 00000128 EAFFFFF4        B                bitLoop     ;
+   98 0000012C         turnOn
+   99 0000012C E5863000        STR              R3, [R6]    ;Turn on the LED
+  100 00000130 E1A03083        MOV              R3,R3,LSL#1 ;Next LED
+  101 00000134 EAFFFFF1        B                bitLoop     ;   
+  102 00000138         done
+  103 00000138 E8BD8030        POP{R4-R5,       PC}
+  104 0000013C         
+  105 0000013C         wait
+  106 0000013C E52DE004        PUSH{lr}
+  107 00000140 E59F4094        ldr              r4,=16000000 ;
+  108 00000144 E2544001 
+                       dloop   subs             r4,r4,#1    ;
+  109 00000148 1AFFFFFD        bne              dloop       ;
+  110 0000014C E49DF004        POP{PC}
+  111 00000150         
+  112 00000150         
+  113 00000150         swapBits
+  114 00000150 E92D400A        push{R1,         R3, lr}
+  115 00000154 E3A03004        MOV              R3, #4
+  116 00000158 E1A02E02        MOV              R2, R2, LSL#28
+  117 0000015C E3A01000        MOV              R1, #0
+  118 00000160         swapLoop
+  119 00000160 E1B02082        MOVS             R2, R2, LSL#1
+  120 00000164 E1A01061        RRX              R1, R1
+  121 00000168 E2533001        SUBS             R3, #1
+  122 0000016C 1AFFFFFB        BNE              swapLoop
+  123 00000170 E1A02001        MOV              R2, R1
+  124 00000174 E1A02E22        MOV              R2, R2, LSR#28
+  125 00000178 E8BD800A        POP{R1,          R3, pc}
+  126 0000017C         
+  127 0000017C E52DE004 
+                       twos    push{lr}
+  128 00000180 E3E02000        LDR              R2,=0xFFFFFFFF ;Bit mask
+  129 00000184 E0200002        EOR              R0, R0, R2  ;Invert the bits
+  130 00000188 E2800001        ADD              R0, R0, #1  ;Add 1
+  131 0000018C E49DF004        POP{pc}
+  132 00000190         
+  133 00000190         specialCaseZero
+  134 00000190 E3A0200F        MOV              R2, #15
+  135 00000194 EBFFFFD7        BL               putBits
+  136 00000198 EBFFFFE7        BL               wait
+  137 0000019C E3A0280F        LDR              R2,=0x000f0000 ;select P1.19--P
+                                                            1.16
+  138 000001A0 E5812000        STR              R2,[R1]
+  139 000001A4 EBFFFFE4        BL               wait
+
+
+
+ARM Macro Assembler    Page 4 
+
+
+  140 000001A8 E3A03801        LDR              R3, =0x00010000
+  141 000001AC EAFFFFF7        B                specialCaseZero
+  142 000001B0         
+  143 000001B0 EAFFFFFE 
+                       stop    B                stop
+  144 000001B4         
+  145 000001B4                 END
+              E0028018 
+              E0028014 
+              E002801C 
+              B669FD2E 
+              3B9ACA00 
+              05F5E100 
+              00989680 
+              000F4240 
+              000186A0 
+              00002710 
+              00F42400 
+Command Line: --debug --xref --diag_suppress=9931 --apcs=interwork --depend=.\a
+pp.d -o.\app.o -IC:\Keil_v5\ARM\RV31\INC -IC:\Keil_v5\ARM\CMSIS\Include -IC:\Ke
+il_v5\ARM\Inc\Philips --predefine="__EVAL SETA 1" --predefine="__MICROLIB SETA 
+1" --predefine="__UVISION_VERSION SETA 516" --list=.\listings\app.lst App.s
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Relocatable symbols
+
+AsmTemplate 00000000
+
+Symbol: AsmTemplate
+   Definitions
+      At line 1 in file App.s
+   Uses
+      None
+Comment: AsmTemplate unused
+CalcLoop 000000AC
+
+Symbol: CalcLoop
+   Definitions
+      At line 61 in file App.s
+   Uses
+      At line 65 in file App.s
+Comment: CalcLoop used once
+bitLoop 00000100
+
+Symbol: bitLoop
+   Definitions
+      At line 87 in file App.s
+   Uses
+      At line 97 in file App.s
+      At line 101 in file App.s
+
+calculateNumbers 000000A0
+
+Symbol: calculateNumbers
+   Definitions
+      At line 57 in file App.s
+   Uses
+      At line 36 in file App.s
+      At line 38 in file App.s
+      At line 40 in file App.s
+      At line 42 in file App.s
+      At line 44 in file App.s
+      At line 46 in file App.s
+      At line 48 in file App.s
+      At line 50 in file App.s
+      At line 52 in file App.s
+      At line 54 in file App.s
+
+checkZero 000000E4
+
+Symbol: checkZero
+   Definitions
+      At line 76 in file App.s
+   Uses
+      At line 68 in file App.s
+Comment: checkZero used once
+dloop 00000144
+
+Symbol: dloop
+   Definitions
+      At line 108 in file App.s
+   Uses
+      At line 109 in file App.s
+Comment: dloop used once
+done 00000138
+
+
+
+ARM Macro Assembler    Page 2 Alphabetic symbol ordering
+Relocatable symbols
+
+
+Symbol: done
+   Definitions
+      At line 102 in file App.s
+   Uses
+      At line 88 in file App.s
+Comment: done used once
+leadingZero 000000E0
+
+Symbol: leadingZero
+   Definitions
+      At line 74 in file App.s
+   Uses
+      At line 79 in file App.s
+Comment: leadingZero used once
+loop 00000000
+
+Symbol: loop
+   Definitions
+      At line 15 in file App.s
+   Uses
+      At line 55 in file App.s
+Comment: loop used once
+negative 000000C0
+
+Symbol: negative
+   Definitions
+      At line 66 in file App.s
+   Uses
+      At line 63 in file App.s
+Comment: negative used once
+notNegative 0000004C
+
+Symbol: notNegative
+   Definitions
+      At line 35 in file App.s
+   Uses
+      At line 28 in file App.s
+Comment: notNegative used once
+putBits 000000F8
+
+Symbol: putBits
+   Definitions
+      At line 84 in file App.s
+   Uses
+      At line 30 in file App.s
+      At line 71 in file App.s
+      At line 135 in file App.s
+
+setZero 000000F0
+
+Symbol: setZero
+   Definitions
+      At line 80 in file App.s
+   Uses
+      At line 78 in file App.s
+Comment: setZero used once
+specialCaseZero 00000190
+
+
+
+
+ARM Macro Assembler    Page 3 Alphabetic symbol ordering
+Relocatable symbols
+
+Symbol: specialCaseZero
+   Definitions
+      At line 133 in file App.s
+   Uses
+      At line 25 in file App.s
+      At line 141 in file App.s
+
+start 00000000
+
+Symbol: start
+   Definitions
+      At line 8 in file App.s
+   Uses
+      At line 7 in file App.s
+Comment: start used once
+stop 000001B0
+
+Symbol: stop
+   Definitions
+      At line 143 in file App.s
+   Uses
+      At line 143 in file App.s
+Comment: stop used once
+swapBits 00000150
+
+Symbol: swapBits
+   Definitions
+      At line 113 in file App.s
+   Uses
+      At line 70 in file App.s
+Comment: swapBits used once
+swapLoop 00000160
+
+Symbol: swapLoop
+   Definitions
+      At line 118 in file App.s
+   Uses
+      At line 122 in file App.s
+Comment: swapLoop used once
+turnOn 0000012C
+
+Symbol: turnOn
+   Definitions
+      At line 98 in file App.s
+   Uses
+      At line 94 in file App.s
+Comment: turnOn used once
+twos 0000017C
+
+Symbol: twos
+   Definitions
+      At line 127 in file App.s
+   Uses
+      At line 33 in file App.s
+Comment: twos used once
+validZero 000000D4
+
+Symbol: validZero
+   Definitions
+
+
+
+ARM Macro Assembler    Page 4 Alphabetic symbol ordering
+Relocatable symbols
+
+      At line 71 in file App.s
+   Uses
+      At line 82 in file App.s
+Comment: validZero used once
+wait 0000013C
+
+Symbol: wait
+   Definitions
+      At line 105 in file App.s
+   Uses
+      At line 22 in file App.s
+      At line 31 in file App.s
+      At line 72 in file App.s
+      At line 136 in file App.s
+      At line 139 in file App.s
+
+22 symbols
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Absolute symbols
+
+IO1CLR E002801C
+
+Symbol: IO1CLR
+   Definitions
+      At line 12 in file App.s
+   Uses
+      At line 20 in file App.s
+Comment: IO1CLR used once
+IO1DIR E0028018
+
+Symbol: IO1DIR
+   Definitions
+      At line 10 in file App.s
+   Uses
+      At line 15 in file App.s
+Comment: IO1DIR used once
+IO1SET E0028014
+
+Symbol: IO1SET
+   Definitions
+      At line 11 in file App.s
+   Uses
+      At line 18 in file App.s
+Comment: IO1SET used once
+NUMBER B669FD2E
+
+Symbol: NUMBER
+   Definitions
+      At line 13 in file App.s
+   Uses
+      At line 23 in file App.s
+Comment: NUMBER used once
+4 symbols
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+External symbols
+
+main 00000000
+
+Symbol: main
+   Definitions
+      At line 2 in file App.s
+   Uses
+      None
+Comment: main unused
+1 symbol
+362 symbols in table
